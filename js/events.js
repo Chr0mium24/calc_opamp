@@ -8,8 +8,6 @@ import { initPyodide, runAnalysis } from './pyodide_handler.js';
 export function setupEventListeners(elements) {
     const { svg, modal,loadingOverlay, loadingStatus, modalSaveBtn, modalInputName, modalInputValue, netlistOutput } = elements;
 
-    // --- Toolbar Buttons ---
-    // Bug Fix: Pass 'gnd' to match the button's ID 'btn-ground'
     document.getElementById('btn-ground').onclick = () => actions.setPlacingComponent('ground'); 
     document.getElementById('btn-voltage').onclick = () => actions.setPlacingComponent('voltage');
     document.getElementById('btn-resistor').onclick = () => actions.setPlacingComponent('resistor');
@@ -18,11 +16,20 @@ export function setupEventListeners(elements) {
         netlistOutput.value = generateNetlist();
     };
 
-    // "Analyze Circuit" 按钮事件 (新增)
-    document.getElementById('btn-analyze').onclick = async () => {
+
+    document.getElementById('btn-analyze-toggle').onclick = async () => {
         if (state.isPyodideLoading || state.isAnalyzing) return;
 
-        // 步骤 1: 初始化 Pyodide (如果尚未初始化)
+        // --- 如果当前在分析模式，则切换回编辑模式 ---
+        if (state.isInAnalysisMode) {
+            state.isInAnalysisMode = false;
+            state.analysisResults = null;
+            state.selectedItemId = null;
+            render(svg);
+            return;
+        }
+
+        // --- 如果当前在编辑模式，则开始分析 ---
         loadingOverlay.classList.remove('hidden');
         if (!state.pyodide) {
             try {
@@ -37,7 +44,6 @@ export function setupEventListeners(elements) {
             }
         }
         
-        // 步骤 2: 生成网表并运行分析
         loadingStatus.textContent = "Analyzing circuit...";
         const netlist = generateNetlist();
         const nodeMap = getNetlistNodeMap(); // 需要节点映射来查询节点电压
@@ -48,57 +54,58 @@ export function setupEventListeners(elements) {
         }
 
         await runAnalysis(netlist, nodeMap);
-        
-        // 步骤 3: 完成
+
         loadingOverlay.classList.add('hidden');
+
+        // 分析成功后进入分析模式
+        if (state.analysisResults) {
+            state.isInAnalysisMode = true;
+        }
+
         state.selectedItemId = null; // 清除之前的选择
         render(svg); // 重新渲染以更新显示
     };
 
     // SVG Canvas 点击事件 (更新)
     svg.addEventListener('click', (e) => {
+
         const rect = svg.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const clickY = e.clientY - rect.top;
 
+        // 在分析模式下，完全禁用放置元件的功能
+        if (state.isInAnalysisMode) {
+             // 允许在分析模式下进行选择
+            if (state.analysisResults) {
+                const group = e.target.closest('.component-group');
+                if (group) {
+                    state.selectedItemId = group.dataset.id;
+                } else {
+                    // 检查是否点击了节点区域
+                    const nodeMap = getNetlistNodeMap();
+                    let clickedNode = null;
+                    const clickThreshold = 15 * 15; // 15px aoe
+
+                    nodeMap.forEach((netlistNum, node) => {
+                        if(node.terminals.size === 0) return;
+                        const { avgX, avgY } = actions.getNodePosition(node);
+                        const distSq = (clickX - avgX)**2 + (clickY - avgY)**2;
+                        if (distSq < clickThreshold) {
+                            clickedNode = `node-${netlistNum}`;
+                        }
+                    });
+                    state.selectedItemId = clickedNode;
+                }
+                render(svg);
+            }
+            render(svg);
+            return; // 提前返回，不执行放置逻辑
+        }        
         // 如果正在放置元件
         if (state.placingComponentType) {
             actions.addNewComponent(state.placingComponentType, clickX, clickY);
             render(svg);
             return;
-        }
-
-        // 如果分析已完成，则处理选择逻辑
-        if (state.analysisResults) {
-            const group = e.target.closest('.component-group');
-            if (group) {
-                state.selectedItemId = group.dataset.id;
-            } else {
-                // 检查是否点击了节点区域
-                const nodeMap = getNetlistNodeMap();
-                let clickedNode = null;
-                const clickThreshold = 15 * 15; // 15px aoe
-
-                nodeMap.forEach((netlistNum, node) => {
-                    if(node.terminals.size === 0) return;
-                    const { avgX, avgY } = actions.getNodePosition(node);
-                    const distSq = (clickX - avgX)**2 + (clickY - avgY)**2;
-                    if (distSq < clickThreshold) {
-                        clickedNode = `node-${netlistNum}`;
-                    }
-                });
-                state.selectedItemId = clickedNode;
-            }
-            render(svg);
-        }
-    });
-    
-    // --- SVG Canvas Events ---
-    svg.addEventListener('click', (e) => {
-        if (state.placingComponentType) {
-            const rect = svg.getBoundingClientRect();
-            actions.addNewComponent(state.placingComponentType, e.clientX - rect.left, e.clientY - rect.top);
-            render(svg);
         }
     });
     
@@ -107,6 +114,10 @@ export function setupEventListeners(elements) {
         const group = target.closest('.component-group');
         
         if (target.classList.contains('terminal') && group) {
+
+            // 在分析模式下，禁用所有与连线相关的操作
+            if (state.isInAnalysisMode) return; 
+
             const component = state.components.find(c => c.id === group.dataset.id);
             const terminal = component.terminals.find(t => t.dx == target.getAttribute('cx') && t.dy == target.getAttribute('cy'));
 
@@ -148,6 +159,10 @@ export function setupEventListeners(elements) {
     svg.addEventListener('dblclick', (e) => {
         const group = e.target.closest('.component-group');
         if (group) {
+
+            // 在分析模式下，禁用双击编辑功能
+            if (state.isInAnalysisMode) return;
+
             const comp = state.components.find(c => c.id === group.dataset.id);
             if (comp && comp.type !== 'ground') {
                 state.editingComponent = comp;
@@ -185,6 +200,7 @@ export function setupEventListeners(elements) {
             actions.rotateHoveredComponent();
             render(svg);
         } else if (e.key === 'x' && !targetIsInput) {
+            if (state.isInAnalysisMode) return;
             actions.deleteHoveredItem();
             render(svg);
         } else if (e.key === 'Escape') {

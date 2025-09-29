@@ -19,7 +19,7 @@ export function createDOM() {
         <button id="btn-opamp">Op-Amp</button>
         <div class="ml-auto flex gap-2">
             <button id="btn-generate" class="bg-gray-500 text-white hover:bg-gray-600 font-semibold">Generate Netlist</button>
-            <button id="btn-analyze" class="bg-blue-600 text-white hover:bg-blue-700 font-bold">Analyze Circuit</button>
+            <button id="btn-analyze-toggle" class="bg-blue-600 text-white hover:bg-blue-700 font-bold">Analyze Circuit</button>
         </div>
     `;
     toolbar.querySelectorAll('button').forEach(btn => {

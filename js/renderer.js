@@ -160,6 +160,7 @@ function drawResults(svg) {
 
     if (textContent.length > 0) {
         const g = document.createElementNS(ns, 'g');
+        g.setAttribute('class', 'pointer-events-none');
         g.setAttribute('transform', `translate(${targetX}, ${targetY - 40})`); // 在元件上方显示
 
         // 背景框
@@ -186,6 +187,43 @@ function drawResults(svg) {
     }
 }
 
+export function updateUIMode() {
+    const toggleBtn = document.getElementById('btn-analyze-toggle');
+    const componentBtns = ['btn-gnd', 'btn-voltage', 'btn-resistor', 'btn-opamp'];
+
+    if (state.isInAnalysisMode) {
+        // --- 分析模式 ---
+        if (toggleBtn){
+        toggleBtn.textContent = 'Edit Circuit';
+        toggleBtn.className = 'px-3 py-2 cursor-pointer border rounded bg-yellow-500 text-white hover:bg-yellow-600 font-bold';
+        }
+        
+        // 禁用添加元件的按钮
+        componentBtns.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn){
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        });
+
+    } else {
+        // --- 编辑模式 ---
+        if (toggleBtn){
+        toggleBtn.textContent = 'Analyze Circuit';
+        toggleBtn.className = 'px-3 py-2 cursor-pointer border rounded bg-blue-600 text-white hover:bg-blue-700 font-bold';
+        }
+        // 启用添加元件的按钮
+        componentBtns.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn){
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        });
+    }
+
+}
 
 
 export function render(svg) {
@@ -282,6 +320,8 @@ export function render(svg) {
         text.setAttribute('class', 'node-label text-sm font-mono fill-blue-600 pointer-events-none');
         svg.appendChild(text);
     });
+
+    updateUIMode();
 
     // Draw Wire-drawing highlight (no change)
     if (state.isDrawingWire && state.wireStartTerminal) {

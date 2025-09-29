@@ -1,3 +1,4 @@
+//state.js
 export const state = {
     components: [],
     nodes: new Map(),
@@ -18,4 +19,5 @@ export const state = {
     isAnalyzing: false,     // Lcapy 是否正在分析
     analysisResults: null,  // 存储分析结果的 Map
     selectedItemId: null,   // 选中的元件或节点的 ID (例如 'R1' 或 'node-1')
+    isInAnalysisMode: false,
 };
