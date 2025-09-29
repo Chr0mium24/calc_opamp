@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuit Visual Editor (V2) - Tailwind Refactor</title>
+    <!-- 直接从 CDN 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入自定义样式 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100 flex flex-col items-center p-5 font-sans">
+    
+    <!-- App 容器，所有内容将由 JavaScript 动态填充 -->
+    <div id="app-container" class="w-full max-w-4xl"></div>
+
+    <!-- 
+      使用 type="module" 来支持 import/export 语法, 
+      这是我们拆分 JavaScript 文件的关键 
+    -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

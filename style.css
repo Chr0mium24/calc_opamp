@@ -1,0 +1,16 @@
+/* 当工具栏按钮被选中时的高亮样式 */
+#toolbar button.active {
+    background-color: #3b82f6; /* Tailwind's blue-500 */
+    color: white;
+    border-color: #3b82f6;
+}
+
+/* 为 SVG 中的组件组在 hover 时添加一个自定义的阴影效果 */
+.component-group:hover {
+    filter: drop-shadow(0px 0px 3px #007bff);
+    cursor: grab;
+}
+
+.component-group:active {
+    cursor: grabbing;
+}
