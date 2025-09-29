@@ -104,10 +104,11 @@ export function setupEventListeners(elements) {
 
     // --- Keyboard Events ---
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'r') {
+        const targetIsInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+        if (e.key === 'r' && !targetIsInput) {
             actions.rotateHoveredComponent();
             render(svg);
-        } else if (e.key === 'x') {
+        } else if (e.key === 'x' && !targetIsInput) {
             actions.deleteHoveredItem();
             render(svg);
         } else if (e.key === 'Escape') {
