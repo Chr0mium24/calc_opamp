@@ -17,7 +17,10 @@ export function createDOM() {
         <button id="btn-voltage">Voltage Source</button>
         <button id="btn-resistor">Resistor</button>
         <button id="btn-opamp">Op-Amp</button>
-        <button id="btn-generate" class="ml-auto bg-green-500 text-white hover:bg-green-600 font-semibold">Generate Lcapy Netlist</button>
+        <div class="ml-auto flex gap-2">
+            <button id="btn-generate" class="bg-gray-500 text-white hover:bg-gray-600 font-semibold">Generate Netlist</button>
+            <button id="btn-analyze" class="bg-blue-600 text-white hover:bg-blue-700 font-bold">Analyze Circuit</button>
+        </div>
     `;
     toolbar.querySelectorAll('button').forEach(btn => {
         btn.className = `${btn.className} px-3 py-2 cursor-pointer border border-gray-300 rounded`;
@@ -35,6 +38,20 @@ export function createDOM() {
     svg.setAttribute('width', '800');
     svg.setAttribute('height', '600');
     editorContainer.appendChild(svg);
+
+     // Loading Overlay (新增)
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'loading-overlay';
+    loadingOverlay.className = 'hidden absolute inset-0 bg-black bg-opacity-50 z-10 flex flex-col items-center justify-center pointer-events-none';
+    const loadingStatus = document.createElement('div');
+    loadingStatus.id = 'loading-status';
+    loadingStatus.className = 'text-gray-300 mt-2';
+    const loadingTitle = document.createElement('div');
+    loadingTitle.className = 'text-white text-2xl font-bold';
+    loadingTitle.textContent = 'Loading...';
+    loadingOverlay.append(loadingTitle, loadingStatus);
+
+    editorContainer.append(svg, loadingOverlay);
 
     // Netlist Output Area
     const netlistContainer = document.createElement('div');
@@ -68,6 +85,8 @@ export function createDOM() {
     return {
         svg,
         modal,
+        loadingOverlay,  // <-- 确保返回此引用
+        loadingStatus,   // <-- 确保返回此引用
         modalTitle: document.getElementById('modal-title'),
         modalInputName: document.getElementById('modal-input-name'),
         modalInputValue: document.getElementById('modal-input-value'),

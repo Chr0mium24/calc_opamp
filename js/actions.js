@@ -78,3 +78,12 @@ export function rotateHoveredComponent() {
         state.hoveredComponent.rotation = (state.hoveredComponent.rotation + 90) % 360;
     }
 }
+
+export function getNodePosition(node) {
+    if (!node || node.terminals.size === 0) return { avgX: 0, avgY: 0 };
+    const totalX = Array.from(node.terminals).reduce((sum, t) => sum + t.pos.x, 0);
+    const totalY = Array.from(node.terminals).reduce((sum, t) => sum + t.pos.y, 0);
+    const avgX = totalX / node.terminals.size;
+    const avgY = totalY / node.terminals.size;
+    return { avgX, avgY };
+}

@@ -1,6 +1,7 @@
 // js/renderer.js
 import { state } from './state.js';
 import { getNetlistNodeMap } from './netlist.js';
+import { getNodePosition } from './actions.js';
 
 const ns = 'http://www.w3.org/2000/svg';
 
@@ -118,6 +119,75 @@ function drawComponentBody(group, comp) {
     }
 }
 
+function drawResults(svg) {
+    if (!state.selectedItemId || !state.analysisResults) return;
+
+    const resultData = state.analysisResults.get(state.selectedItemId);
+    if (!resultData) return;
+
+    let targetX, targetY;
+    let textContent = [];
+
+    if (state.selectedItemId.startsWith('node-')) {
+        // --- 显示节点电压 ---
+        const nodeNum = state.selectedItemId.split('-')[1];
+        const nodeMap = getNetlistNodeMap();
+        let targetNode = null;
+        for (const [node, num] of nodeMap.entries()) {
+            if (num.toString() === nodeNum) {
+                targetNode = node;
+                break;
+            }
+        }
+        if (targetNode) {
+            const pos = getNodePosition(targetNode);
+            targetX = pos.avgX;
+            targetY = pos.avgY;
+            if (resultData.v) textContent.push(`V = ${resultData.v}`);
+            if (resultData.error) textContent.push(`Error: ${resultData.error}`);
+        }
+    } else {
+        // --- 显示元件电压和电流 ---
+        const comp = state.components.find(c => c.id === state.selectedItemId);
+        if (comp) {
+            targetX = comp.x;
+            targetY = comp.y;
+            if (resultData.v) textContent.push(`V = ${resultData.v}`);
+            if (resultData.i) textContent.push(`I = ${resultData.i}`);
+            if (resultData.error) textContent.push(`Error: ${resultData.error}`);
+        }
+    }
+
+    if (textContent.length > 0) {
+        const g = document.createElementNS(ns, 'g');
+        g.setAttribute('transform', `translate(${targetX}, ${targetY - 40})`); // 在元件上方显示
+
+        // 背景框
+        const rect = document.createElementNS(ns, 'rect');
+        rect.setAttribute('class', 'fill-yellow-100 stroke-gray-600 stroke-1 rounded');
+        rect.setAttribute('width', 150); // 估算宽度
+        rect.setAttribute('height', textContent.length * 20 + 10);
+        rect.setAttribute('x', -75);
+        rect.setAttribute('y', -15);
+        g.appendChild(rect);
+
+        // 文本
+        textContent.forEach((line, index) => {
+            const text = document.createElementNS(ns, 'text');
+            text.setAttribute('x', 0);
+            text.setAttribute('y', index * 20);
+            text.setAttribute('class', 'text-sm font-mono fill-black text-center');
+            text.setAttribute('text-anchor', 'middle');
+            text.textContent = line;
+            g.appendChild(text);
+        });
+
+        svg.appendChild(g);
+    }
+}
+
+
+
 export function render(svg) {
     svg.innerHTML = '';
     state.wires = [];
@@ -151,6 +221,17 @@ export function render(svg) {
         const group = document.createElementNS(ns, 'g');
         group.classList.add('component-group');
         group.dataset.id = comp.id;
+
+        // --- 新增：高亮选中的元件 ---
+        if (comp.id === state.selectedItemId) {
+            group.classList.add('animate-pulse'); // 用一个简单的脉冲效果
+            const highlight = document.createElementNS(ns, 'circle');
+            highlight.setAttribute('r', '45');
+            highlight.setAttribute('class', 'fill-blue-200 fill-opacity-50 stroke-blue-400 stroke-2');
+            group.appendChild(highlight);
+        }
+
+
         group.setAttribute('transform', `translate(${comp.x}, ${comp.y}) rotate(${comp.rotation})`);
 
         // Call the refactored function that only draws shapes
@@ -212,4 +293,24 @@ export function render(svg) {
         highlight.setAttribute('class', 'fill-none stroke-blue-500 stroke-2 animate-pulse');
         svg.appendChild(highlight);
     }
+
+    // --- 新增：高亮选中的节点 ---
+    if (state.selectedItemId && state.selectedItemId.startsWith('node-')) {
+        const nodeNum = state.selectedItemId.split('-')[1];
+        const nodeMap = getNetlistNodeMap();
+        for (const [node, num] of nodeMap.entries()) {
+            if (num.toString() === nodeNum) {
+                const pos = getNodePosition(node);
+                const highlight = document.createElementNS(ns, 'circle');
+                highlight.setAttribute('cx', pos.avgX);
+                highlight.setAttribute('cy', pos.avgY);
+                highlight.setAttribute('r', '15');
+                highlight.setAttribute('class', 'fill-blue-200 fill-opacity-50 stroke-blue-400 stroke-2 animate-pulse');
+                svg.appendChild(highlight);
+                break;
+            }
+        }
+    }
+
+    drawResults(svg);
 }
