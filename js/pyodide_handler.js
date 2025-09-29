@@ -1,7 +1,6 @@
-// js/pyodide_handler.js
 import { state } from './state.js';
 
-// Python 模板代码，我们将把网表和要查询的元素注入其中
+// Python 模板代码保持不变
 const PYTHON_TEMPLATE = `
 import sys
 import io
@@ -9,9 +8,8 @@ import json
 from lcapy import Circuit
 from sympy import sympify, symbols, limit, oo, SympifyError
 
-# Helper function from example
+# Helper function to simplify expressions with 'inf'
 def simplify_inf_expression(expr_string):
-    # ... (此处省略了 simplify_inf_expression 的完整代码，与示例中相同)
     temp_var = symbols('x')
     if not isinstance(expr_string, str):
         expr_string = str(expr_string)
@@ -19,14 +17,15 @@ def simplify_inf_expression(expr_string):
         try:
             return sympify(expr_string)
         except SympifyError:
-            return expr_string
+            return expr_string # Return as string if cannot be simplified
+    
     processed_string = expr_string.replace('inf', str(temp_var))
     try:
         expression = sympify(processed_string, locals={'oo': oo})
         simplified_result = limit(expression, temp_var, oo)
         return simplified_result
     except SympifyError:
-        return expr_string
+        return expr_string # Return as string on error
 
 # Redirect stdout to capture any errors
 sys.stdout = io.StringIO()
@@ -42,17 +41,19 @@ try:
         try:
             v = simplify_inf_expression(cct[name].v)
             i = simplify_inf_expression(cct[name].i)
-            results[name] = {{'v': str(v), 'i': str(i)}}
+            results[name] = {'v': str(v), 'i': str(i)}
         except Exception as e:
-            results[name] = {{'error': str(e)}}
+            results[name] = {'error': str(e)}
 
     # Analyze nodes
     for node_num in {NODES}:
         try:
+            # Here, node_num will be a string ('1', '0', etc.) which is what Lcapy expects
             v = simplify_inf_expression(cct[node_num].v)
-            results[f'node-{node_num}'] = {{'v': str(v)}}
+            # The key will be 'node-1', 'node-0', etc.
+            results[f'node-{node_num}'] = {'v': str(v)}
         except Exception as e:
-            results[f'node-{node_num}'] = {{'error': str(e)}}
+            results[f'node-{node_num}'] = {'error': str(e)}
 
 except Exception as e:
     results['error'] = str(e)
@@ -63,7 +64,7 @@ print(json.dumps(results))
 
 /**
  * 初始化 Pyodide 并安装 Lcapy。
- * 这个过程很慢，只应执行一次。
+ * (此函数保持不变)
  */
 export async function initPyodide(statusCallback) {
     if (state.pyodide) return state.pyodide;
@@ -91,6 +92,7 @@ export async function initPyodide(statusCallback) {
 
 /**
  * 运行 Lcapy 分析。
+ * (此函数已更新)
  */
 export async function runAnalysis(netlist, nodeMap) {
     if (!state.pyodide) {
@@ -102,12 +104,16 @@ export async function runAnalysis(netlist, nodeMap) {
         .filter(c => c.type !== 'ground')
         .map(c => `'${c.name}'`);
 
-    const nodeNumbers = Array.from(nodeMap.values());
+    // --- FIX START ---
+    // 将节点编号转换为字符串列表，以确保 Python 使用字符串进行查询。
+    // 例如，生成 [''0'', ''1'', ''2''] 而不是 [0, 1, 2]。
+    const nodeNumbersAsStrings = Array.from(nodeMap.values()).map(num => `'${String(num)}'`);
     
     const pythonCode = PYTHON_TEMPLATE
         .replace('{NETLIST}', netlist)
         .replace('{COMPONENTS}', `[${componentNames.join(', ')}]`)
-        .replace('{NODES}', `[${nodeNumbers.join(', ')}]`);
+        .replace('{NODES}', `[${nodeNumbersAsStrings.join(', ')}]`); // 使用字符串列表
+    // --- FIX END ---
         
     try {
         await state.pyodide.runPythonAsync('import sys, io; sys.stdout = io.StringIO()');
@@ -119,11 +125,12 @@ export async function runAnalysis(netlist, nodeMap) {
             throw new Error(`Lcapy analysis failed: ${results.error}`);
         }
 
-        // 将结果存储为 Map，便于查找
         state.analysisResults = new Map(Object.entries(results));
 
     } catch (e) {
         console.error("Python execution error:", e);
+        // 在控制台打印失败的 Python 代码，方便调试
+        console.log("Failed Python code for debugging:\n", pythonCode);
         alert("An error occurred during circuit analysis. Check the console for details.");
         state.analysisResults = null;
     } finally {
