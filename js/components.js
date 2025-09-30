@@ -29,7 +29,7 @@ class Component {
         this.value = this.getDefaultValue(type); this.rotation = 0; this.terminals = [];
     }
     getDefaultValue(type) {
-        return { resistor: '1k', voltage: '1V', opamp: 'inf' }[type] || '';
+        return { resistor: '1k', voltage: '1', opamp: 'inf' }[type] || '';
     }
     destroy() {
         this.terminals.forEach(t => {

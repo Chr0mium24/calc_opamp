@@ -102,3 +102,5 @@ Supported components and their netlist representations:
 - **Ground** (G): Special node with ID 0, not included in netlist
 
 Node numbering: Ground = 0, other nodes numbered sequentially starting from 1.
+
+###每次编辑后将所做修改写在claude.md中
